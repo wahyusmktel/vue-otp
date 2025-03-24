@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\DataTanah;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage as FileStorage;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\DataTanahExport;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class DataTanahController extends Controller
 {
@@ -82,4 +85,21 @@ class DataTanahController extends Controller
         return back()->with('toast', 'Data berhasil dihapus!');
     }
 
+    public function exportExcel(Request $request)
+    {
+        return Excel::download(new DataTanahExport($request->search), 'data_tanah.xlsx');
+    }
+
+    public function exportPDF(Request $request)
+    {
+        $dataTanah = DataTanah::query()
+            ->when($request->search, function ($q, $search) {
+                $q->where('nama_lokasi', 'like', "%$search%")
+                ->orWhere('status_tanah', 'like', "%$search%");
+            })->get();
+
+        $pdf = Pdf::loadView('exports.data_tanah_pdf', ['dataTanah' => $dataTanah]);
+
+        return $pdf->download('data_tanah.pdf');
+    }
 }
